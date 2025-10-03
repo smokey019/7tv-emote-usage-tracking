@@ -1,0 +1,19 @@
+{
+  "name": "7tv-emote-usage-tracking",
+  "version": "1.0.0",
+  "description": "Track how many times each 7tv emote is being used in a chat. Sort by usage so you can see which emotes aren't used over a period of time and use the links to easily remove them from your emote list. Created with help from Claude Code.",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts --watch",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@twurple/api": "^7.1.0",
+    "@twurple/auth": "^7.1.0",
+    "@twurple/easy-bot": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
