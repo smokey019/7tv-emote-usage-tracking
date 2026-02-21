@@ -1,16 +1,19 @@
 # 7tv-emote-usage-tracking
 
-A Twitch chat bot built with Twurple that reads and processes chat messages with 7TV emote tracking.
+A Twitch chat bot that monitors chat messages, tracks 7TV emote usage, and provides a real-time web dashboard for analytics. Track how often each emote is used so you can identify which emotes aren't being used and clean up your emote list. Built with Bun and Twurple.
 
 ## Features
 
-- 📖 Read-only chat monitoring
-- 🔄 Automatic token refreshing
-- 👥 User information lookup via Twitch API
-- 📊 Track subscriptions, raids, and other events
-- 🎨 **7TV emote tracking and statistics**
-- 📈 **Real-time web dashboard**
-- 🏗️ Clean, modular architecture
+- 📖 Read-only chat monitoring (no bot commands sent)
+- 🎨 7TV emote tracking and usage statistics
+- 📈 Real-time web dashboard with auto-refresh
+- 🌓 Light/dark theme toggle
+- 🔍 Per-channel search/filter and sortable tables
+- 📋 Shows all emotes (used + unused) so you can spot dead emotes
+- 🔗 Direct "View on 7TV" links for each emote
+- 🔄 Automatic OAuth token refreshing
+- 💾 Persistent statistics (auto-save every 30s + graceful shutdown save)
+- 📱 Responsive layout (desktop, tablet, mobile)
 
 ## Prerequisites
 
@@ -27,20 +30,19 @@ A Twitch chat bot built with Twurple that reads and processes chat messages with
 
 2. **Configure environment variables:**
    ```bash
-   cp .env.example .env
+   bun run setup
    ```
 
    Fill in your `.env` file with:
    - `TWITCH_CLIENT_ID` - From your Twitch app
    - `TWITCH_CLIENT_SECRET` - From your Twitch app
-   - `TWITCH_BOT_USER_ID` - Your bot account's user ID
    - `TWITCH_ACCESS_TOKEN` - Initial access token
    - `TWITCH_REFRESH_TOKEN` - Initial refresh token
    - `TWITCH_CHANNELS` - Comma-separated list of channels to monitor
 
 3. **Get your tokens:**
    - Use the [Twitch Token Generator](https://twitchtokengenerator.com/) to get initial tokens
-   - Make sure to select the `chat:read` scope
+   - Make sure to select the `chat` scope
 
 ## Running the Bot
 
@@ -64,11 +66,16 @@ The bot will start and automatically:
 
 Once the bot is running, open your browser to **http://localhost:3000** to view:
 
-- 📊 Total messages across all channels
-- 🎨 Total emotes used
-- 🏆 Top emotes across all channels
-- 📈 Per-channel statistics
-- 🔥 Real-time emote usage tracking (auto-refreshes every 5 seconds)
+- 📊 Global stats cards (total messages, total emotes used, channels tracked)
+- 🏆 Top emotes across all channels (card grid with images)
+- 📈 Per-channel breakdown with top-10 emote cards
+- 📋 Collapsible full emote tables per channel showing **all** emotes (used + unused)
+- 🔍 Per-table search/filter to quickly find specific emotes
+- ↕️ Sortable columns (Name, Uses) with persistent sort state
+- 🔗 "View on 7TV" links for each emote
+- 🌓 Light/dark theme toggle (saved to localStorage)
+- 🔄 Auto-refresh toggle (5-second polling) with manual refresh button
+- 📱 Responsive layout (desktop, tablet, mobile breakpoints)
 
 ## Project Structure
 
@@ -89,8 +96,9 @@ Once the bot is running, open your browser to **http://localhost:3000** to view:
 │   │   └── server.ts           # Web dashboard server
 │   ├── bot.ts                  # Main bot class
 │   └── index.ts                # Entry point
-├── data/
-│   └── tokens/                 # Auto-refreshed tokens (created automatically)
+├── data/                         # Runtime data (git-ignored)
+│   ├── tokens/                 # Auto-refreshed tokens (created automatically)
+│   └── statistics/             # Emote usage stats (created automatically)
 ├── .env                        # Your configuration (not in git)
 ├── .env.example                # Example configuration
 └── package.json
@@ -103,7 +111,7 @@ Once the bot is running, open your browser to **http://localhost:3000** to view:
 Edit [src/handlers/message-handler.ts](src/handlers/message-handler.ts) to add your own message processing logic:
 
 ```typescript
-async handleMessage(message: ChatMessage): Promise<void> {
+async handleMessage(message: MessageEvent): Promise<void> {
   // Your custom logic here
   if (message.text.includes('keyword')) {
     // Do something
