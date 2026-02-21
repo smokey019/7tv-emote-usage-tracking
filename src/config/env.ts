@@ -6,7 +6,6 @@
 export interface EnvConfig {
   clientId: string;
   clientSecret: string;
-  botUserId: string;
   accessToken: string;
   refreshToken: string;
   channels: string[];
@@ -20,7 +19,6 @@ export function loadEnv(): EnvConfig {
   const required = [
     'TWITCH_CLIENT_ID',
     'TWITCH_CLIENT_SECRET',
-    'TWITCH_BOT_USER_ID',
     'TWITCH_ACCESS_TOKEN',
     'TWITCH_REFRESH_TOKEN',
     'TWITCH_CHANNELS'
@@ -44,7 +42,6 @@ export function loadEnv(): EnvConfig {
   return {
     clientId: process.env.TWITCH_CLIENT_ID!,
     clientSecret: process.env.TWITCH_CLIENT_SECRET!,
-    botUserId: process.env.TWITCH_BOT_USER_ID!,
     accessToken: process.env.TWITCH_ACCESS_TOKEN!,
     refreshToken: process.env.TWITCH_REFRESH_TOKEN!,
     channels

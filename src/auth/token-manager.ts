@@ -15,7 +15,6 @@ export class TokenManager {
   async createAuthProvider(
     clientId: string,
     clientSecret: string,
-    userId: string,
     initialToken: AccessToken
   ): Promise<RefreshingAuthProvider> {
     // Ensure token directory exists

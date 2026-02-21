@@ -27,7 +27,6 @@ async function main() {
     const authProvider = await tokenManager.createAuthProvider(
       config.clientId,
       config.clientSecret,
-      config.botUserId,
       initialToken
     );
 

@@ -8,28 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Running the Bot
-```bash
-bun run dev         # Development mode with auto-reload
-bun run start       # Production mode
-```
-
-### Installing Dependencies
-```bash
-bun install
-```
-
-### Initial Setup
-```bash
-cp .env.example .env
-# Then fill in the Twitch credentials in .env
-```
+| Command | Description |
+|---------|-------------|
+| `bun install` | Install dependencies |
+| `bun run dev` | Development mode with auto-reload |
+| `bun run start` | Production mode |
+| `bun run build` | Build to `dist/` via `bun build` |
+| `bun run typecheck` | Type-check with `tsc --noEmit` |
+| `bun run clean` | Remove `dist/` |
+| `bun run setup` | Copy `.env.example` → `.env` (no-clobber) |
 
 ## Key Architecture Concepts
 
 ### Service-Oriented Design
 
-The bot follows a service-oriented architecture where each major functionality is isolated into its own service:
+The bot follows a service-oriented architecture where each major functionality is isolated into its own service. **TwitchChatBot** (`src/bot.ts`) wires all services together, instantiating them in dependency order and managing the `@twurple/easy-bot` `Bot` instance.
 
 1. **UserService** (`src/services/user-service.ts`)
    - Wraps Twurple's `ApiClient.users` (HelixUserApi)
@@ -44,8 +37,8 @@ The bot follows a service-oriented architecture where each major functionality i
 
 3. **StatisticsService** (`src/services/statistics-service.ts`)
    - Tracks emote usage counts per channel
-   - Stores emote metadata (ID, imageUrl, animated) alongside usage stats
-   - In-memory storage only (resets on restart)
+   - Stores emote metadata (ID, imageUrl, animated, lastUsed) alongside usage stats
+   - Persists to `data/statistics/stats.json` (auto-save every 30s + on shutdown)
    - Used by dashboard to show usage statistics
 
 4. **MessageHandler** (`src/handlers/message-handler.ts`)
@@ -63,27 +56,32 @@ The bot follows a service-oriented architecture where each major functionality i
 
 ### Bot Initialization Sequence
 
-1. `index.ts` loads environment config
+1. `index.ts` loads environment config via `loadEnv()`
 2. TokenManager creates RefreshingAuthProvider with initial tokens
-3. TwitchChatBot instantiates all services in dependency order:
-   - ApiClient → UserService → EmoteService → StatisticsService → MessageHandler
-4. Bot connects to Twurple chat
-5. EmoteService pre-loads emotes for all channels (parallel fetches)
-6. DashboardServer starts on port 3000
+3. `new TwitchChatBot(authProvider, channels)` — constructor does:
+   - Creates ApiClient → UserService → EmoteService → StatisticsService → MessageHandler
+   - Instantiates `Bot` (Twurple easy-bot) and registers event handlers
+   - Calls `preloadChannelEmotes()` (fire-and-forget)
+4. `index.ts` calls `statisticsService.loadStats()` then `startAutoSave()`
+5. DashboardServer starts on port 3000
 
 ### Web Dashboard
 
 **Architecture** (`src/web/server.ts`):
 - Single-file Bun HTTP server (no Express)
 - Serves HTML with embedded CSS/JavaScript (no build step)
-- Two routes: `/` (dashboard HTML) and `/api/stats` (JSON endpoint)
+- Three routes: `/` and `/index.html` (dashboard HTML), `/api/stats` (JSON endpoint)
 
 **Key Features**:
-- Auto-refresh toggle (prevents losing table sort state)
+- Auto-refresh toggle (5s polling; sort/expand state preserved across refreshes)
+- Light/dark theme toggle (persisted in localStorage)
 - Collapsible tables per channel showing ALL emotes (used + unused)
+- Per-table search/filter input with live filtering
+- Top-10 emote card grid per channel (summary view above the full table)
 - Tables only render HTML when expanded (performance optimization)
 - Sortable columns (Name, Uses) with persistent sort state
-- Scrollable table wrapper (max-height: 600px) with sticky header
+- Toast notifications for errors/info
+- Responsive layout (breakpoints at 1024/768/480px)
 
 **API Enhancement**:
 - `/api/stats` merges StatisticsService data with EmoteService metadata
@@ -92,19 +90,9 @@ The bot follows a service-oriented architecture where each major functionality i
 
 ### 7TV Integration
 
-**Emote Metadata Structure**:
-```typescript
-{
-  id: string;              // 7TV emote ID
-  name: string;            // Emote name (case-sensitive)
-  imageUrl: string;        // https://cdn.7tv.app/emote/{id}/1x.webp
-  animated: boolean;       // Is animated emote
-}
-```
-
-**API Response**: `GET https://7tv.io/v3/users/twitch/{channelID}` returns nested structure at `data.emote_set.emotes[]`
-
-**Channel ID Requirement**: 7TV API requires Twitch numeric user IDs, not usernames. UserService converts username → ID before calling 7TV.
+- **API**: `GET https://7tv.io/v3/users/twitch/{channelID}` → response at `emote_set.emotes[]`
+- **Emote metadata**: `{ id, name, imageUrl, animated }` — image URL: `https://cdn.7tv.app/emote/{emote.data.id}/1x.webp`
+- **Channel ID requirement**: 7TV needs Twitch numeric user IDs, not usernames. UserService converts username → ID before calling 7TV.
 
 ## Important Patterns
 
@@ -136,31 +124,18 @@ DashboardServer receives EmoteService + StatisticsService via constructor inject
 - Final save on graceful shutdown (SIGINT/SIGTERM)
 - Loads previous stats on startup via `loadStats()`
 
-**File Structure**: Maps are serialized to arrays for JSON storage, then reconstructed on load:
-```typescript
-// Saved format
-[{
-  channelName: "summit1g",
-  totalMessages: 100,
-  totalEmotesUsed: 50,
-  emotes: [{ emoteName: "peepoArrive", count: 10, ... }]
-}]
+**File Structure**: Runtime `Map<channelName, { emotes: Map<emoteName, EmoteStats> }>` is serialized to a JSON array of channel objects for storage, then reconstructed on load.
 
-// Runtime format
-Map<channelName, { emotes: Map<emoteName, EmoteStats> }>
-```
-
-**Graceful Shutdown**: `index.ts` captures SIGINT/SIGTERM → calls `stopAutoSave()` → performs final save → exits
+**Graceful Shutdown**: `index.ts` captures SIGINT/SIGTERM → calls `stopAutoSave()` → saves if dirty → exits
 
 ## Configuration
 
 **Required Environment Variables**:
 - `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET`: Twitch app credentials
-- `TWITCH_BOT_USER_ID`: Bot account's numeric user ID
 - `TWITCH_ACCESS_TOKEN` / `TWITCH_REFRESH_TOKEN`: Initial OAuth tokens
 - `TWITCH_CHANNELS`: Comma-separated channel names (e.g., "summit1g,smokey")
 
-**Token Generation**: Use https://twitchtokengenerator.com/ with `chat:read` scope
+**Token Generation**: Use https://twitchtokengenerator.com/ with `chat` scope
 
 **User ID Lookup**: https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
 

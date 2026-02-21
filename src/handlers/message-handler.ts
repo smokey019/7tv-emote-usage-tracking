@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@twurple/easy-bot';
+import type { MessageEvent } from '@twurple/easy-bot';
 import type { EmoteService } from '../services/emote-service';
 import type { StatisticsService } from '../services/statistics-service';
 import type { UserService } from '../services/user-service';
@@ -17,7 +17,7 @@ export class MessageHandler {
    * Processes an incoming chat message
    * @param message - The chat message event from Twurple
    */
-  async handleMessage(message: ChatMessage): Promise<void> {
+  async handleMessage(message: MessageEvent): Promise<void> {
     const channelName = message.broadcasterName;
     const userName = message.userDisplayName;
     const userId = message.userId;
@@ -74,8 +74,8 @@ export class MessageHandler {
         }
       }
 
-      console.log(`[${channelName}] ${userName}: ${messageText}`);
-      console.log(`  Emotes found: ${foundEmotes.join(', ')}`);
+      //console.log(`[${channelName}] ${userName}: ${messageText}`);
+      //console.log(`  Emotes found: ${foundEmotes.join(', ')}`);
     }
   }
 }

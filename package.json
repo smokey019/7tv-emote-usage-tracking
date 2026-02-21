@@ -5,8 +5,12 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun run src/index.ts --watch",
-    "start": "bun run src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "setup": "cp -n .env.example .env || true"
   },
   "dependencies": {
     "@twurple/api": "^7.1.0",
@@ -14,6 +18,7 @@
     "@twurple/easy-bot": "^7.1.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
   }
 }
